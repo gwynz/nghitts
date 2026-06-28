@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ---------------------------------------------------------------------------
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { model: '', text: '', output: 'output.wav', speed: 1.0, debug: false };
+  const opts = { model: '', text: '', output: 'output.wav', speed: 1.0, debug: false, padSilence: 125 };
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '-m': case '--model': opts.model = args[++i]; break;
@@ -34,15 +34,17 @@ function parseArgs() {
       case '-o': case '--output': opts.output = args[++i]; break;
       case '-s': case '--speed': opts.speed = parseFloat(args[++i]); break;
       case '--debug': opts.debug = true; break;
+      case '--pad-silence': opts.padSilence = parseInt(args[++i], 10); break;
       case '-h': case '--help':
         console.log(`Usage: node tts-cli.mjs [options]
   -m, --model <path>   Model path without extension (e.g. public/tts-model/vi/ngochuyennew)
   -t, --text <text>    Input text
   -f, --file <path>    Read input text from file
   -o, --output <file>  Output WAV file (default: output.wav)
-  -s, --speed <float>  Speed multiplier (default: 1.0)
-  --debug              Enable debug logging
-  -h, --help           Show this help`);
+   -s, --speed <float>  Speed multiplier (default: 1.0)
+   --debug              Enable debug logging
+   --pad-silence <ms>   Leading/trailing silence in ms (default: 125)
+   -h, --help           Show this help`);
         process.exit(0);
     }
   }
@@ -120,7 +122,6 @@ function parseSRT(filePath) {
     const startTime = timeMatch[1].replace(',', '.');
     const endTime = timeMatch[2].replace(',', '.');
     const segText = lines.slice(2).join('\n').trim();
-    if (!segText) continue;
     segments.push({ index, startTime, endTime, text: segText });
   }
   return segments;
@@ -216,6 +217,7 @@ class PiperTTS {
   constructor(voiceConfig, session) {
     this.voiceConfig = voiceConfig;
     this.session = session;
+    this.padSilence = 0;
   }
 
   static async fromFiles(modelPath, configPath) {
@@ -300,6 +302,7 @@ class PiperTTS {
     const lengthScale = options.speed ? 1.0 / options.speed : 1.0;
     const noiseScale = options.noiseScale ?? 0.667;
     const noiseWScale = options.noiseWScale ?? 0.8;
+    this.padSilence = options.padSilence ?? this.padSilence;
 
     // Chunk text
     const chunks = chunkText(text);
@@ -329,15 +332,16 @@ class PiperTTS {
       allAudio.push(new Float32Array(audioData));
     }
 
-    return this._mergeAudio(allAudio);
+    return this._mergeAudio(allAudio, this.padSilence);
   }
 
-  _mergeAudio(chunks) {
+  _mergeAudio(chunks, padSilence = 0) {
     if (!chunks.length) return null;
     const sr = this.voiceConfig.audio?.sample_rate || 22050;
-    const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+    const padSamples = padSilence > 0 ? Math.round(padSilence * sr / 1000) : 0;
+    const totalLen = chunks.reduce((s, c) => s + c.length, padSamples * 2);
     const waveform = new Float32Array(totalLen);
-    let offset = 0;
+    let offset = padSamples;
     for (const c of chunks) {
       waveform.set(c, offset);
       offset += c.length;
@@ -353,6 +357,11 @@ class PiperTTS {
     const g = Math.min(4, target / max);
     if (g < 1) for (let i = 0; i < f32.length; i++) f32[i] *= g;
   }
+}
+
+function generateSilence(durationMs, sampleRate) {
+  const numSamples = Math.round(sampleRate * durationMs / 1000);
+  return new RawAudio(new Float32Array(numSamples), sampleRate);
 }
 
 // ---------------------------------------------------------------------------
@@ -405,16 +414,19 @@ async function main() {
       console.log(`[${i + 1}/${segments.length}] ${seg.startTime} -> ${seg.endTime}: "${seg.text.slice(0, 60)}..."`);
 
       const processedText = await processTextForTTS(seg.text, csvDir);
-      if (!processedText) continue;
 
       let audio;
-      try {
-        audio = await tts.generate(processedText, { speed: opts.speed });
-      } catch (err) {
-        console.error(`Error on segment ${i} (${seg.startTime}): "${seg.text}" - ${err.message}`);
-        continue;
+      if (!processedText || !/[\w\d]/i.test(processedText)) {
+        audio = generateSilence(500, tts.voiceConfig.audio?.sample_rate || 22050);
+      } else {
+        try {
+          audio = await tts.generate(processedText, { speed: opts.speed, padSilence: opts.padSilence });
+        } catch (err) {
+          console.error(`Error on segment ${i} (${seg.startTime}): "${seg.text}" - ${err.message}`);
+          continue;
+        }
+        if (!audio) continue;
       }
-      if (!audio) continue;
 
       const segFile = `segment_${i}.wav`;
       const segPath = path.join(outDir, segFile);
@@ -444,7 +456,7 @@ async function main() {
   console.log('Processed:', processedText);
 
   console.log('Generating audio...');
-  const audio = await tts.generate(processedText, { speed: opts.speed });
+  const audio = await tts.generate(processedText, { speed: opts.speed, padSilence: opts.padSilence });
 
   if (!audio) {
     console.error('No audio generated');
