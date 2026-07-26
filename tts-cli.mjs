@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ---------------------------------------------------------------------------
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { model: '', text: '', output: 'output.wav', speed: 1.0, debug: false, padSilence: 125 };
+  const opts = { model: '', text: '', output: 'output.wav', speed: 1.0, debug: false, padSilence: 100 };
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '-m': case '--model': opts.model = args[++i]; break;

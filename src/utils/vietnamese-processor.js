@@ -947,6 +947,9 @@ function normalizePunctuation(text) {
     // Remove multiple punctuation
     text = text.replace(/([!?.]){2,}/g, '$1');
     
+    // Remove leading dots
+    text = text.replace(/^\.+/g, '');
+    
     return text;
 }
 
