@@ -151,6 +151,18 @@ function removeThousandSeparators(text) {
 }
 
 /**
+ * Remove English-style comma thousand separators from numbers
+ * Handles 1,000 -> 1000, 10,000 -> 10000, 100,000 -> 100000, etc.
+ * Only removes commas between groups of exactly 3 digits, so decimal 
+ * numbers like 1,5 or 1,23 are left untouched (handled by convertDecimal).
+ */
+function removeCommaThousandSeparators(text) {
+    return text.replace(/(\d{1,3}(?:,\d{3})+)(?=\s|$|[^\d,])/g, (match) => {
+        return match.replace(/,/g, '');
+    });
+}
+
+/**
  * Convert decimal numbers: 7,27 -> bảy phẩy hai mươi bảy
  * In Vietnamese, commas are used as decimal separators
  */
@@ -984,8 +996,11 @@ export function processVietnameseText(text, config = null) {
     // Step 3: Normalize punctuation
     text = normalizePunctuation(text);
     
-    // Step 4: Remove thousand separators (dots) before currency, decimals and range handling
+    // Step 4a: Remove thousand separators (dots) before currency, decimals and range handling
     text = removeThousandSeparators(text);
+    
+    // Step 4b: Remove English-style comma thousand separators (1,000 -> 1000)
+    text = removeCommaThousandSeparators(text);
     
     // Step 5: Convert numeric ranges/fractions with units or currency
     text = convertRangesWithUnitsAndCurrency(text);

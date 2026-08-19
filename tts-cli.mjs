@@ -190,13 +190,18 @@ async function processTextForTTS(text, csvDir) {
 
   // Transliteration
   const wordRegex = /(?:^|[^\w\u00C0-\u1EFF])([\w\u00C0-\u1EFF]+)(?=[^\w\u00C0-\u1EFF]|$)/g;
-  const processed = new Set();
-  result = result.replace(wordRegex, (match, word, offset) => {
+  const processed = new Map();
+  result = result.replace(wordRegex, (match, word) => {
     const wl = word.toLowerCase();
-    if (processed.has(wl) || replacementMap.has(wl) || isVietnameseWord(word) || isVietnameseWord(wl) || word.length === 1 || TRANSLITERATION_SKIP.has(wl))
+    if (replacementMap.has(wl) || isVietnameseWord(word) || isVietnameseWord(wl) || word.length === 1 || TRANSLITERATION_SKIP.has(wl))
       return match;
-    processed.add(wl);
-    const trans = transliterateWord(word);
+    let trans;
+    if (processed.has(wl)) {
+      trans = processed.get(wl);
+    } else {
+      trans = transliterateWord(word);
+      processed.set(wl, trans);
+    }
     return match.replace(word, (w) => w[0] === w[0].toUpperCase() ? trans.charAt(0).toUpperCase() + trans.slice(1) : trans);
   });
 

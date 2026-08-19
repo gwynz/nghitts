@@ -59,8 +59,9 @@ class VnLanguageDetector {
         // Kiểm tra Nguyên âm:
         // Tiếng Việt không có nguyên âm kép kiểu 'ee', 'oo' (trừ khi bạn muốn coi 'oo' là tiếng Việt)
         if (/ee|oo|ea|oa|ae|ie/.test(vowel)) {
-            // Ngoại lệ: 'oa' là vần tiếng Việt hợp lệ (như 'loa', 'qua')
-            if (vowel !== 'oa' && vowel !== 'oe' && vowel !== 'ua' && vowel !== 'uy') {
+            // Ngoại lệ: 'oa' là vần tiếng Việt hợp lệ (như 'loa', 'qua'),
+            // kèm các vần mở rộng bắt đầu bằng oa/oe/ua/uy (như 'oai' trong 'khoai', 'oay', 'oeo', 'uya', 'uyê')
+            if (!/^(oa|oe|ua|uy)/.test(vowel)) {
                 return false; 
             }
         }

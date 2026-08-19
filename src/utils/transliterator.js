@@ -407,7 +407,7 @@ function englishToVietnamese(word) {
     
     // Quy tắc C/K
     if (!p.startsWith('ch') && !p.startsWith('th') && !p.startsWith('ph') && !p.startsWith('sh')) {
-      if (p.startsWith('k') || p.startsWith('c')) {
+      if ((p.startsWith('k') || p.startsWith('c')) && !p.startsWith('kh')) {
         const next = p.slice(1, 2);
         const useK = ['i', 'e', 'y'].includes(next);
         p = (useK ? 'k' : 'c') + p.slice(1);

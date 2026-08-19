@@ -8,6 +8,7 @@
     "format": "prettier --write piper-tts-web-demo",
     "build": "vite build",
     "lint": "eslint piper-tts-web-demo",
+    "test": "node --test \"tests/*.test.mjs\"",
     "preview": "vite preview"
   },
   "dependencies": {
