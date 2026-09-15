@@ -205,6 +205,9 @@ async function processTextForTTS(text, csvDir) {
     return match.replace(word, (w) => w[0] === w[0].toUpperCase() ? trans.charAt(0).toUpperCase() + trans.slice(1) : trans);
   });
 
+  // Fix Vietnamese orthography: gin -> ghin (g before i must be gh)
+  result = result.replace(/\bgin\b/gi, 'ghin');
+
   return result;
 }
 

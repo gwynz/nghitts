@@ -480,6 +480,18 @@ export async function processTextForTTS(text) {
         });
     }
 
+    // Step 4.6: Fix Vietnamese orthography: gin -> ghin (g before i must be gh)
+    // Covers standalone gin, Jin->gin, and gin inside hyphenated transliterations like ô-ri-gin-nồ
+    // \b treats '-' as boundary, so ô-ri-gin-nồ -> ô-ri-ghin-nồ
+    const beforeOrthFix = processedText;
+    processedText = processedText.replace(/\bgin\b/gi, 'ghin');
+    if (isDebugEnabled(config) && beforeOrthFix !== processedText) {
+        debugLog(config, 'Step 4.6: Orthography Fix gin->ghin', {
+            before: beforeOrthFix,
+            after: processedText
+        });
+    }
+
     if (isDebugEnabled(config)) {
         debugLog(config, 'Preprocessing Complete', { 
             original: text, 
