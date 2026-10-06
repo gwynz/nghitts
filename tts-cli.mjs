@@ -237,11 +237,23 @@ class PiperTTS {
     const voiceConfig = JSON.parse(configStr);
 
     const backends = (ort.listSupportedBackends?.() ?? []).map(b => b.name);
-    const hasDml = backends.includes('dml');
-    const executionProviders = hasDml ? ['dml', 'cpu'] : ['cpu'];
+    const hasDml = backends.includes('dml') && process.env.ORT_CPU_ONLY !== '1';
+    let executionProviders = hasDml ? ['dml', 'cpu'] : ['cpu'];
     console.log(`Using ${hasDml ? 'GPU (DirectML)' : 'CPU'}`);
 
-    const session = await ort.InferenceSession.create(modelBuffer, { executionProviders });
+    let session;
+    try {
+      session = await ort.InferenceSession.create(modelBuffer, { executionProviders });
+    } catch (err) {
+      if (hasDml) {
+        console.warn(`DirectML init failed (${err.message}), falling back to CPU...`);
+        executionProviders = ['cpu'];
+        session = await ort.InferenceSession.create(modelBuffer, { executionProviders });
+        console.log('Using CPU (fallback)');
+      } else {
+        throw err;
+      }
+    }
     console.log('Model loaded:', path.basename(modelPath));
     return new PiperTTS(voiceConfig, session);
   }
