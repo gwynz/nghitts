@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { processVietnameseText } from './src/utils/vietnamese-processor.js';
 import { transliterateWord } from './src/utils/transliterator.js';
 import { isVietnameseWord } from './src/utils/vietnamese-detector.js';
+import { forceVietnamesePhonemes } from './src/utils/phoneme-fix.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -260,7 +261,8 @@ class PiperTTS {
     const voice = this.voiceConfig.espeak?.voice || 'en-us';
     const raw = await phonemize(text, voice);
     const merged = this._mergePhonemes(text, raw);
-    const cleaned = merged.replace(/\(en\)/g, '').replace(/\(vi\)/g, '');
+    const forced = forceVietnamesePhonemes(text, merged, voice);
+    const cleaned = forced.replace(/\(en\)/g, '').replace(/\(vi\)/g, '');
     const trimmed = cleaned.trim();
     return trimmed ? [Array.from(trimmed.normalize('NFD'))] : [];
   }

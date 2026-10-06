@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 
 import { processTextForTTS, chunkText, loadConfig, isDebugEnabled, debugLog } from '../utils/text-cleaner.js';
+import { forceVietnamesePhonemes } from '../utils/phoneme-fix.js';
 
 // Merge phonemizer output (which may be an array of clause strings) into a single
 // string while preserving clause separators (commas/semicolons/colons) from the
@@ -229,9 +230,11 @@ export class PiperTTS {
     }
     
     // Merge phonemizer output into a single string while preserving punctuation,
-    // then remove (en) and (vi) markers from phoneme text
+    // then force Vietnamese reading for misclassified words (e.g. "veo")
+    // BEFORE removing (en) and (vi) markers from phoneme text
     const mergedPhonemeText = mergePhonemizerOutputPreservePunct(text, phonemes);
-    const cleanedPhonemeText = mergedPhonemeText
+    const forcedPhonemeText = forceVietnamesePhonemes(text, mergedPhonemeText, voice);
+    const cleanedPhonemeText = forcedPhonemeText
       .replace(/\(en\)/g, '')
       .replace(/\(vi\)/g, '');
     

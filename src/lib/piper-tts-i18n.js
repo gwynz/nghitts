@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 
 import { cleanTextForTTS, chunkText } from '../utils/text-cleaner-i18n.js';
+import { forceVietnamesePhonemes } from '../utils/phoneme-fix.js';
 
 // Text splitting stream to break text into chunks
 export class TextSplitterStream {
@@ -141,6 +142,9 @@ export class PiperTTS {
     } else {
       phonemeText = String(phonemes || text);
     }
+
+    // Force Vietnamese reading for misclassified words (no-op for non-vi voices)
+    phonemeText = forceVietnamesePhonemes(text, phonemeText, voice);
 
     const sentences = phonemeText.split(/[.!?]+/).filter(s => s.trim());
     return sentences.map(sentence => Array.from(sentence.trim().normalize("NFD")));
